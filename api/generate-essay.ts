@@ -12,10 +12,10 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "키워드를 성실히 기입해 주세요." });
     }
 
-    // Initialize GoogleGenAI with Gemini API Key from environment variables
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Check request header first, fallback to environment variable
+    const apiKey = req.headers['x-custom-api-key'] || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel 프로젝트 설정에서 Environment Variables를 추가해 주세요." });
+      return res.status(400).json({ error: "GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel 프로젝트 설정에서 Environment Variables를 추가해 주시거나, 화면 하단에서 본인의 구글 AI 스튜디오 API 키를 직접 입력해 주세요." });
     }
 
     const ai = new GoogleGenAI({

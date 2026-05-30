@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { FileEdit, CheckCircle, HelpCircle, Save, Download, RefreshCw, Sparkles, Printer, User, Award, Check } from 'lucide-react';
+import { FileEdit, CheckCircle, HelpCircle, Save, Download, RefreshCw, Sparkles, Printer, User, Award, Check, Key } from 'lucide-react';
 import { EssayResponse, DiscussionAnswer } from '../types';
 
 export default function Lesson4() {
@@ -26,6 +26,8 @@ export default function Lesson4() {
   const [reflectionEssay, setReflectionEssay] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [genError, setGenError] = useState<string>('');
+  const [customApiKey, setCustomApiKey] = useState<string>('');
+  const [showKeyInput, setShowKeyInput] = useState<boolean>(false);
 
   // Load from local storage
   useEffect(() => {
@@ -33,6 +35,7 @@ export default function Lesson4() {
     const savedDiscussion = localStorage.getItem('dokdo_discussion_data_v1');
     const savedKeywords = localStorage.getItem('dokdo_reflection_keywords_v1');
     const savedReflection = localStorage.getItem('dokdo_reflection_essay_v1');
+    const savedCustomKey = localStorage.getItem('dokdo_custom_api_key_v1');
     
     if (savedEssay) {
       setEssay(JSON.parse(savedEssay));
@@ -48,6 +51,9 @@ export default function Lesson4() {
     if (savedReflection) {
       setReflectionEssay(savedReflection);
     }
+    if (savedCustomKey) {
+      setCustomApiKey(savedCustomKey);
+    }
   }, []);
 
   // Save to local storage
@@ -56,6 +62,7 @@ export default function Lesson4() {
     localStorage.setItem('dokdo_discussion_data_v1', JSON.stringify(discussion));
     localStorage.setItem('dokdo_reflection_keywords_v1', reflectionKeywords);
     localStorage.setItem('dokdo_reflection_essay_v1', reflectionEssay);
+    localStorage.setItem('dokdo_custom_api_key_v1', customApiKey);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -83,11 +90,16 @@ export default function Lesson4() {
     setGenError('');
     
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (customApiKey.trim()) {
+        headers['x-custom-api-key'] = customApiKey.trim();
+      }
+
       const response = await fetch('/api/generate-essay', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify({ keywords: reflectionKeywords }),
       });
       
@@ -100,7 +112,18 @@ export default function Lesson4() {
       setReflectionEssay(data.essay || '');
     } catch (err: any) {
       console.error(err);
-      setGenError(err.message || '서버와의 통신 중 오류가 발생했습니다.');
+      let errMsg = err.message || '서버와의 통신 중 오류가 발생했습니다.';
+      
+      // 구체적 403 차단 오류에 대응하는 안내 문구 및 키 직접 입력 유도
+      if (errMsg.includes('denied access') || errMsg.includes('PERMISSION_DENIED') || errMsg.includes('403')) {
+        errMsg = `독도 소감문 생성 중 구글 API 서버가 Vercel 서버의 미국 IP 대역으로부터 호출된 API 키 요청을 차단했습니다(403 API Key Denied).
+
+💡 원인: 한국 도메인 사용자용 API 키를 Vercel US 동부 기본 서버리스 대역에서 호출할 때 보안 정책으로 인한 차단이 빈번하게 수신됩니다.
+
+👇 해결 방안: 아래에서 본인의 구글 AI 스튜디오 API 키를 직접 임시 입력해 주세요! 본인의 브라우저 세션에서 Vercel 서버를 전용 프록시 삼아 안전하게 키를 전달해 우회합니다.`;
+        setShowKeyInput(true);
+      }
+      setGenError(errMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -134,10 +157,13 @@ export default function Lesson4() {
       });
       setReflectionKeywords('');
       setReflectionEssay('');
+      setCustomApiKey('');
+      setShowKeyInput(false);
       localStorage.removeItem('dokdo_essay_data_v1');
       localStorage.removeItem('dokdo_discussion_data_v1');
       localStorage.removeItem('dokdo_reflection_keywords_v1');
       localStorage.removeItem('dokdo_reflection_essay_v1');
+      localStorage.removeItem('dokdo_custom_api_key_v1');
     }
   };
 
@@ -383,9 +409,49 @@ export default function Lesson4() {
             <Sparkles className="w-4 h-4 text-[#C5A880]" /> 🤖 인공지능(AI) 독도 배움 소감문 자동 집필
           </h4>
           
-          <p className="text-xs text-gray-400 font-light leading-relaxed">
-            본 학습 과정에서 얻은 성찰이나 소감문에 반드시 담고 싶은 단어(예: <strong className="text-white">평화, 공존, 미래 세대, 역사적 진실</strong> 등)를 입력하고 생성 버튼을 누르면, 사실 중심의 품격 있고 미래지향적인 소감문이 즉석에서 지어집니다.
-          </p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#141414] p-4.5 rounded-xl border border-white/5">
+            <p className="text-xs text-gray-400 font-light leading-relaxed">
+              본 학습 과정에서 얻은 성찰이나 소감문에 반드시 담고 싶은 단어(예: <strong className="text-white">평화, 공존, 미래 세대, 역사적 진실</strong> 등)를 입력하고 생성 버튼을 누르면, 사실 중심의 품격 있고 미래지향적인 소감문이 즉석에서 지어집니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="text-[11px] text-gray-400 hover:text-[#C5A880] transition flex items-center gap-1.5 shrink-0 font-sans border border-white/10 hover:border-[#C5A880]/30 px-3 py-1.5 rounded-lg cursor-pointer print:hidden select-none"
+            >
+              <Key className="w-3.5 h-3.5" />
+              {showKeyInput ? '개인 API 키 입력 가리기' : '개인 API 키 직접 입력'}
+            </button>
+          </div>
+
+          {showKeyInput && (
+            <div className="p-4 bg-yellow-950/10 border border-[#C5A880]/20 rounded-xl space-y-2.5 animate-fade-in print:hidden font-sans">
+              <span className="text-xs text-[#C5A880] font-medium flex items-center gap-1.5">🔑 구글 AI 스튜디오 API 키 직접 주입 (선택사항)</span>
+              <p className="text-[11px] text-gray-400 leading-relaxed font-light">
+                Vercel에 배포 후 구글의 IP 보안 제한(403 Forbidden - Your project has been denied access)으로 인해 요청이 거부될 경우를 위한 우회 수단입니다. 구글 AI 스튜디오(<a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-[#C5A880] underline hover:text-[#b0946d]">aistudio.google.com</a>)에서 발급받은 본인의 API 키를 입력해 두시면, Vercel 서버는 전달 기능만 대행(프록시)하고 본인의 클라이언트 측 키 주도로 안전히 처리됩니다.
+              </p>
+              <div className="flex gap-2.5">
+                <input
+                  type="password"
+                  value={customApiKey}
+                  onChange={e => setCustomApiKey(e.target.value)}
+                  placeholder="AI Studio API Key (AIzaSy... 로 시작하는 값)"
+                  className="flex-1 p-2.5 rounded-lg border border-white/10 bg-[#0E0E0E] text-white text-xs font-mono focus:outline-none focus:border-[#C5A880]"
+                />
+                {customApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomApiKey('');
+                      localStorage.removeItem('dokdo_custom_api_key_v1');
+                    }}
+                    className="px-3.5 py-2 text-xs border border-red-900/30 bg-red-950/20 text-red-400 hover:bg-red-950/40 rounded-lg transition"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 print:hidden">
             <div className="flex flex-col sm:flex-row gap-2.5">

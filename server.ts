@@ -12,16 +12,6 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Initialize GoogleGenAI server-side with required User-Agent attribute
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-
   // API endpoint for generating a beautiful reflection essay (소감문)
   app.post("/api/generate-essay", async (req: express.Request, res: express.Response) => {
     try {
@@ -29,6 +19,24 @@ async function startServer() {
       if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
         return res.status(400).json({ error: "키워드를 성실히 기입해 주세요." });
       }
+
+      // Check request header first, fallback to environment variable
+      const apiKey = (req.headers['x-custom-api-key'] as string) || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: "GEMINI_API_KEY 환경변수가 설정되지 않았거나 키를 수신하지 못했습니다. 키가 준비되시면 화면 하단의 '개인 API 키 직접 입력' 버튼을 통해 본인의 API 키를 입력하여 요청할 수도 있습니다." 
+        });
+      }
+
+      // Lazy initialization of the SDK with the chosen API Key
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
 
       console.log(`Generating essay with keywords: "${keywords}"`);
 
