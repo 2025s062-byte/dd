@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-sans: "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-bg-dark: #0A0A0A;
+  --color-panel-dark: #121212;
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-accent-gold: #C5A880;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: #E5E5E5;
+}
+
+/* Custom design classes for Sophisticated Dark theme */
+.small-caps {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  color: #8E8E93;
+}
+
+.serif-display {
+  font-family: var(--font-serif);
+}
+
+.gallery-card {
+  background: linear-gradient(135deg, #121212 0%, #080808 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+}
+
+.gallery-card-hover:hover {
+  border-color: rgba(197, 168, 128, 0.3);
+  background: linear-gradient(135deg, #161616 0%, #0B0B0B 100%);
+}
+
+/* Print optimizations layout rules */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 13pt !important;
+  }
+  header, footer, aside, button, nav {
+    display: none !important;
+  }
+  #print-area {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  textarea, input {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    resize: none !important;
+    font-family: inherit !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+}
+
