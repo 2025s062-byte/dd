@@ -21,10 +21,18 @@ export default function Lesson4() {
   const [saved, setSaved] = useState<boolean>(false);
   const [loadedFromStorage, setLoadedFromStorage] = useState<boolean>(false);
 
+  // New states for the keyword-based AI essay generator
+  const [reflectionKeywords, setReflectionKeywords] = useState<string>('');
+  const [reflectionEssay, setReflectionEssay] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [genError, setGenError] = useState<string>('');
+
   // Load from local storage
   useEffect(() => {
     const savedEssay = localStorage.getItem('dokdo_essay_data_v1');
     const savedDiscussion = localStorage.getItem('dokdo_discussion_data_v1');
+    const savedKeywords = localStorage.getItem('dokdo_reflection_keywords_v1');
+    const savedReflection = localStorage.getItem('dokdo_reflection_essay_v1');
     
     if (savedEssay) {
       setEssay(JSON.parse(savedEssay));
@@ -34,12 +42,20 @@ export default function Lesson4() {
       setDiscussion(JSON.parse(savedDiscussion));
       setLoadedFromStorage(true);
     }
+    if (savedKeywords) {
+      setReflectionKeywords(savedKeywords);
+    }
+    if (savedReflection) {
+      setReflectionEssay(savedReflection);
+    }
   }, []);
 
   // Save to local storage
   const handleSave = () => {
     localStorage.setItem('dokdo_essay_data_v1', JSON.stringify(essay));
     localStorage.setItem('dokdo_discussion_data_v1', JSON.stringify(discussion));
+    localStorage.setItem('dokdo_reflection_keywords_v1', reflectionKeywords);
+    localStorage.setItem('dokdo_reflection_essay_v1', reflectionEssay);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -59,6 +75,48 @@ export default function Lesson4() {
     });
   };
 
+  // Generate essay with Gemini API
+  const handleGenerateEssay = async () => {
+    if (!reflectionKeywords.trim()) return;
+    
+    setIsGenerating(true);
+    setGenError('');
+    
+    try {
+      const response = await fetch('/api/generate-essay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keywords: reflectionKeywords }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || '소감문 생성 중 오류가 발생했습니다.');
+      }
+      
+      setReflectionEssay(data.essay || '');
+    } catch (err: any) {
+      console.error(err);
+      setGenError(err.message || '서버와의 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Apply generated essay directly to textbook essay box
+  const handleApplyToTextbook = () => {
+    if (!reflectionEssay) return;
+    if (window.confirm('작성된 AI 소감문을 상단 "공동 집필 서술형 본문"에 복사하여 적용하시겠습니까? (기존 내용은 덮어씌워집니다)')) {
+      setEssay(prev => ({
+        ...prev,
+        essayContent: reflectionEssay
+      }));
+    }
+  };
+
   // Reset implementation
   const handleReset = () => {
     if (window.confirm('입력하신 모든 내용을 초기화하시겠습니까?')) {
@@ -74,8 +132,12 @@ export default function Lesson4() {
         q2: '',
         q3: ''
       });
+      setReflectionKeywords('');
+      setReflectionEssay('');
       localStorage.removeItem('dokdo_essay_data_v1');
       localStorage.removeItem('dokdo_discussion_data_v1');
+      localStorage.removeItem('dokdo_reflection_keywords_v1');
+      localStorage.removeItem('dokdo_reflection_essay_v1');
     }
   };
 
@@ -312,6 +374,99 @@ export default function Lesson4() {
               placeholder="자유롭게 본인의 생각을 기록해 보세요..."
               className="w-full p-3 rounded-lg border border-white/10 bg-[#0E0E0E] text-white text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#C5A880]/30 focus:border-[#C5A880] print:border-none print:p-0 print:text-black print:bg-white"
             />
+          </div>
+        </div>
+
+        {/* AI 독도 배움 소감문 자동 한판 집필 */}
+        <div className="space-y-4 pt-6 border-t border-white/10">
+          <h4 className="font-light text-base text-white border-b border-white/5 pb-3.5 serif-display italic flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#C5A880]" /> 🤖 인공지능(AI) 독도 배움 소감문 자동 집필
+          </h4>
+          
+          <p className="text-xs text-gray-400 font-light leading-relaxed">
+            본 학습 과정에서 얻은 성찰이나 소감문에 반드시 담고 싶은 단어(예: <strong className="text-white">평화, 공존, 미래 세대, 역사적 진실</strong> 등)를 입력하고 생성 버튼을 누르면, 사실 중심의 품격 있고 미래지향적인 소감문이 즉석에서 지어집니다.
+          </p>
+
+          <div className="space-y-3 print:hidden">
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <input
+                type="text"
+                value={reflectionKeywords}
+                onChange={e => setReflectionKeywords(e.target.value)}
+                placeholder="소감문에 포함할 핵심 키워드를 입력해 보세요 (예: 미래세대, 평화공존, 태정관지령)"
+                className="flex-1 p-3 rounded-lg border border-white/10 bg-[#0E0E0E] text-white text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-[#C5A880]/30 focus:border-[#C5A880]"
+              />
+              
+              <button
+                type="button"
+                disabled={isGenerating || !reflectionKeywords.trim()}
+                onClick={handleGenerateEssay}
+                className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-lg text-xs font-semibold bg-[#C5A880] text-black hover:bg-[#b0946d] disabled:opacity-40 disabled:hover:bg-[#C5A880] disabled:cursor-not-allowed transition duration-200 cursor-pointer font-sans"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> 생성 중...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" /> 소감문 작성하기
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 프리셋 키워드 추천 */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 font-sans">
+              <span className="text-[10px] text-gray-500 font-medium">추천 키워드 터치:</span>
+              {['역사적 권원', '태정관지령', '평화 공동체', '미래 세대', '상생 협력', '세종실록지리지', '동해의 보석'].map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    const curr = reflectionKeywords.trim();
+                    if (!curr) {
+                      setReflectionKeywords(preset);
+                    } else if (curr.endsWith(',')) {
+                      setReflectionKeywords(`${curr} ${preset}`);
+                    } else {
+                      setReflectionKeywords(`${curr}, ${preset}`);
+                    }
+                  }}
+                  className="px-2.5 py-1 text-[10px] border border-white/5 bg-white/5 text-gray-400 hover:text-[#C5A880] hover:border-[#C5A880]/30 rounded transition cursor-pointer"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {genError && (
+            <p className="text-xs text-red-400 font-medium bg-red-950/20 p-2.5 rounded border border-red-900/30">
+              {genError}
+            </p>
+          )}
+
+          <div className="space-y-2.5">
+            <textarea
+              value={reflectionEssay}
+              onChange={e => setReflectionEssay(e.target.value)}
+              rows={4}
+              placeholder="자동 생성된 고품격 성찰 소감문이 나타납니다. 생성된 소감문을 직접 보완하거나 자유롭게 편집할 수도 있습니다..."
+              className="w-full p-4 rounded-xl border border-white/10 text-xs font-light leading-relaxed bg-[#0E0E0E] text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#C5A880]/30 focus:border-[#C5A880] print:border-none print:p-0 print:text-black print:bg-white"
+              style={{ fontFamily: 'Georgia, serif' }}
+            />
+
+            {reflectionEssay && (
+              <div className="flex gap-2.5 justify-end print:hidden">
+                <button
+                  type="button"
+                  onClick={handleApplyToTextbook}
+                  className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold border border-emerald-900/40 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60 rounded-lg transition cursor-pointer font-sans"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> 상단 교과서 집필문으로 복사 적용하기
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
